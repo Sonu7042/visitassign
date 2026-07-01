@@ -12,8 +12,12 @@ const normalizeApiUrl = (value) => {
   return url;
 };
 
-// Prefer /api so Vercel can forward requests without cross-site cookies.
-const baseURL = normalizeApiUrl(import.meta.env.VITE_API_URL);
+// Production always stays on the frontend origin. This prevents a stale or
+// incorrectly configured Vercel variable from bypassing the /api rewrite and
+// turning authentication into a cross-origin cookie/CORS request.
+const baseURL = import.meta.env.PROD
+  ? '/api'
+  : normalizeApiUrl(import.meta.env.VITE_API_URL);
 
 const axiosClient = axios.create({
   baseURL,

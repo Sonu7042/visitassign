@@ -1,11 +1,23 @@
-const DEFAULT_CLIENT_URL = 'http://localhost:5173';
+const DEFAULT_ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'https://visitassign.vercel.app',
+];
 
 const normalizeOrigin = (origin) => origin.trim().replace(/\/$/, '');
 
 const parseAllowedOrigins = () => {
-  const rawOrigins = process.env.CLIENT_URLS || process.env.CLIENT_URL || DEFAULT_CLIENT_URL;
+  const configuredOrigins = process.env.CLIENT_URLS || process.env.CLIENT_URL;
 
-  return rawOrigins.split(',').map(normalizeOrigin).filter(Boolean);
+  if (!configuredOrigins) {
+    return DEFAULT_ALLOWED_ORIGINS;
+  }
+
+  return [
+    ...new Set([
+      ...DEFAULT_ALLOWED_ORIGINS,
+      ...configuredOrigins.split(',').map(normalizeOrigin).filter(Boolean),
+    ]),
+  ];
 };
 
 const allowedOrigins = parseAllowedOrigins();
