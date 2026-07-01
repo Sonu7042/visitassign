@@ -12,6 +12,8 @@ import Spinner from '../../components/ui/Spinner';
 import { getErrorMessage } from '../../utils/format';
 
 const EMPTY_FORM = { fullName: '', email: '', phone: '', company: '', address: '' };
+const MAX_FILE_SIZE = 4 * 1024 * 1024;
+const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 
 export default function VisitorFormPage() {
   const { id } = useParams();
@@ -50,8 +52,37 @@ export default function VisitorFormPage() {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
+  const selectFile = (setter, { allowPdf = false } = {}) => (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setter(null);
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      event.target.value = '';
+      setter(null);
+      toast.error('Files must be smaller than 4 MB for Vercel uploads');
+      return;
+    }
+
+    const allowedTypes = allowPdf ? ALLOWED_FILE_TYPES : ALLOWED_FILE_TYPES.slice(0, 3);
+    if (!allowedTypes.includes(file.type)) {
+      event.target.value = '';
+      setter(null);
+      toast.error(allowPdf ? 'Use JPG, PNG, WebP, or PDF' : 'Use a JPG, PNG, or WebP image');
+      return;
+    }
+
+    setter(file);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if ((photo?.size || 0) + (governmentId?.size || 0) > MAX_FILE_SIZE) {
+      toast.error('The photo and government ID must be smaller than 4 MB combined');
+      return;
+    }
     setSaving(true);
     try {
       const data = new FormData();
@@ -100,15 +131,17 @@ export default function VisitorFormPage() {
               label="Photo"
               name="photo"
               accept="image/*"
-              onChange={(e) => setPhoto(e.target.files?.[0])}
+              onChange={selectFile(setPhoto)}
               currentUrl={existing?.photo}
+              hint={photo ? `${photo.name} selected` : 'JPG, PNG, or WebP; maximum 4 MB'}
             />
             <FileInput
               label="Government ID"
               name="governmentId"
               accept="image/*,.pdf"
-              onChange={(e) => setGovernmentId(e.target.files?.[0])}
+              onChange={selectFile(setGovernmentId, { allowPdf: true })}
               currentUrl={existing?.governmentId}
+              hint={governmentId ? `${governmentId.name} selected` : 'JPG, PNG, WebP, or PDF; maximum 4 MB'}
             />
           </div>
 

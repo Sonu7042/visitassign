@@ -1,4 +1,5 @@
 const logger = require('../utils/logger');
+const multer = require('multer');
 
 // eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
@@ -23,6 +24,11 @@ const errorHandler = (err, req, res, next) => {
   } else if (err.name === 'TokenExpiredError') {
     statusCode = 401;
     message = 'Token expired';
+  } else if (err instanceof multer.MulterError) {
+    statusCode = err.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+    message = err.code === 'LIMIT_FILE_SIZE'
+      ? 'Uploaded files must be smaller than 4 MB'
+      : `Invalid file upload: ${err.message}`;
   }
 
   statusCode = statusCode || 500;

@@ -12,5 +12,8 @@ export const toInputDateTime = (date) => (date ? dayjs(date).format('YYYY-MM-DDT
 
 export const monthLabel = (year, month) => dayjs(`${year}-${month}-01`).format('MMM YYYY');
 
-export const getErrorMessage = (error) =>
-  error?.response?.data?.message || error?.message || 'Something went wrong';
+export const getErrorMessage = (error) => {
+  const message = error?.response?.data?.message || error?.message || 'Something went wrong';
+  const details = error?.response?.data?.details;
+  return Array.isArray(details) && details.length ? `${message}: ${details.join(', ')}` : message;
+};
