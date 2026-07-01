@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const logger = require('../utils/logger');
+const ApiError = require('../utils/ApiError');
 
 const isEmailConfigured = () =>
   Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
@@ -11,16 +12,21 @@ if (isEmailConfigured()) {
     port: Number(process.env.SMTP_PORT) || 587,
     secure: Number(process.env.SMTP_PORT) === 465,
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
   });
 } else {
   logger.warn('SMTP credentials not set - emails will be logged instead of sent.');
 }
 
-// Sends an email, or logs and no-ops if SMTP isn't configured (e.g. local dev).
 const sendEmail = async ({ to, subject, html, text, attachments }) => {
+  if (!to) {
+    throw ApiError.badRequest('Email recipient is required');
+  }
+
   if (!transporter) {
-    logger.info(`[email:skip] To: ${to} | Subject: ${subject}`);
-    return { skipped: true };
+    throw ApiError.serviceUnavailable('Email delivery is not configured');
   }
 
   try {
@@ -32,11 +38,18 @@ const sendEmail = async ({ to, subject, html, text, attachments }) => {
       text,
       attachments,
     });
-    return { messageId: info.messageId };
+    logger.info('Email delivered', { to, messageId: info.messageId });
+    return { sent: true, messageId: info.messageId, accepted: info.accepted };
   } catch (err) {
     logger.error(`Failed to send email to ${to}: ${err.message}`);
-    return { skipped: true, error: err.message };
+    throw ApiError.serviceUnavailable('Email delivery failed. Please try again later.');
   }
 };
 
-module.exports = { sendEmail, isEmailConfigured };
+const verifyEmailConnection = async () => {
+  if (!transporter) return false;
+  await transporter.verify();
+  return true;
+};
+
+module.exports = { sendEmail, isEmailConfigured, verifyEmailConnection };

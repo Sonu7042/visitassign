@@ -1,22 +1,35 @@
 const { cloudinary, isCloudinaryConfigured } = require('../config/cloudinary');
-const logger = require('../utils/logger');
+const ApiError = require('../utils/ApiError');
 
-// Uploads a buffer to Cloudinary. Returns null (no-op) if Cloudinary isn't
-// configured so the rest of the app can still function in local/dev setups.
 const uploadBuffer = (buffer, options = {}) => {
   if (!isCloudinaryConfigured()) {
-    logger.warn('Cloudinary not configured - skipping file upload');
-    return Promise.resolve(null);
+    throw ApiError.serviceUnavailable('File uploads are not configured');
+  }
+
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+    throw ApiError.badRequest('The uploaded file is empty');
   }
 
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder: 'visitor-pass', resource_type: 'auto', ...options },
+      {
+        folder: 'visitor-pass',
+        resource_type: 'auto',
+        overwrite: false,
+        unique_filename: true,
+        ...options,
+      },
       (error, result) => {
-        if (error) return reject(error);
+        if (error) {
+          return reject(ApiError.serviceUnavailable(`Cloudinary upload failed: ${error.message}`));
+        }
         resolve(result);
       }
     );
+
+    stream.on('error', (error) => {
+      reject(ApiError.serviceUnavailable(`Cloudinary upload failed: ${error.message}`));
+    });
     stream.end(buffer);
   });
 };

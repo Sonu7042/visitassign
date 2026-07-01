@@ -23,14 +23,30 @@ const createNotification = async ({ recipient, title, message, type = 'in-app', 
 };
 
 const notifyEmail = async ({ recipientUser, title, message, html, attachments }) => {
-  await createNotification({ recipient: recipientUser._id, title, message, type: 'email' });
-  return sendEmail({
-    to: recipientUser.email,
-    subject: title,
-    html: html || `<p>${message}</p>`,
-    text: message,
-    attachments,
+  const notification = await Notification.create({
+    recipient: recipientUser._id,
+    title,
+    message,
+    type: 'email',
+    status: 'pending',
   });
+
+  try {
+    const result = await sendEmail({
+      to: recipientUser.email,
+      subject: title,
+      html: html || `<p>${message}</p>`,
+      text: message,
+      attachments,
+    });
+    notification.status = 'sent';
+    await notification.save();
+    return result;
+  } catch (error) {
+    notification.status = 'failed';
+    await notification.save();
+    throw error;
+  }
 };
 
 const notifyInApp = async ({ recipientUser, title, message, meta }) =>

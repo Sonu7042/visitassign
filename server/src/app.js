@@ -5,6 +5,7 @@ const compression = require("compression");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
+const mongoose = require("mongoose");
 
 const logger = require("./utils/logger");
 const swaggerSpec = require("./config/swagger");
@@ -12,6 +13,8 @@ const { corsOptions } = require("./config/cors");
 const routes = require("./routes");
 const errorHandler = require("./middleware/errorHandler");
 const notFound = require("./middleware/notFound");
+const { isCloudinaryConfigured } = require("./config/cloudinary");
+const { isEmailConfigured } = require("./services/email.service");
 
 const app = express();
 
@@ -32,10 +35,19 @@ app.get("/", (req, res) => {
 });
 
 app.get("/health", (req, res) => {
-  res.set("Cache-Control", "no-store").json({
-    status: "ok",
+  const databaseReady = mongoose.connection.readyState === 1;
+  const services = {
+    database: databaseReady,
+    cloudinary: isCloudinaryConfigured(),
+    email: isEmailConfigured(),
+  };
+  const ready = Object.values(services).every(Boolean);
+
+  res.status(ready ? 200 : 503).set("Cache-Control", "no-store").json({
+    status: ready ? "ok" : "degraded",
     timestamp: new Date().toISOString(),
     uptime: Math.round(process.uptime()),
+    services,
   });
 });
 

@@ -14,6 +14,23 @@ module.exports = async (req, res) => {
     return app(req, res);
   }
 
+  // Let readiness probes report the actual service state even when MongoDB is
+  // unavailable instead of replacing the response with a generic 503.
+  if (req.url === '/health' || req.url?.startsWith('/health?')) {
+    try {
+      if (!dbReady) {
+        dbReady = connectDB().catch((error) => {
+          dbReady = null;
+          throw error;
+        });
+      }
+      await dbReady;
+    } catch (error) {
+      logger.warn('Health check detected an unavailable database', { message: error.message });
+    }
+    return app(req, res);
+  }
+
   try {
     if (!dbReady) {
       // The module can be reused across invocations, so reuse the MongoDB
