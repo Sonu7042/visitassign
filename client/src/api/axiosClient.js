@@ -1,8 +1,19 @@
 import axios from 'axios';
 
-// Keep browser requests same-origin. Vite proxies this path locally and
-// vercel.json proxies it to the separately deployed API in production.
-const baseURL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
+const normalizeApiUrl = (value) => {
+  const url = (value || '/api').trim().replace(/\/+$/, '');
+
+  // A common Vercel configuration mistake is setting VITE_API_URL to only
+  // the backend origin. All API routes in this application live under /api.
+  if (/^https?:\/\/[^/]+$/i.test(url)) {
+    return `${url}/api`;
+  }
+
+  return url;
+};
+
+// Prefer /api so Vercel can forward requests without cross-site cookies.
+const baseURL = normalizeApiUrl(import.meta.env.VITE_API_URL);
 
 const axiosClient = axios.create({
   baseURL,
