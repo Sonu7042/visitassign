@@ -1,4 +1,4 @@
-const DEFAULT_CLIENT_URL = 'http://localhost:5173';
+const DEFAULT_CLIENT_URL = 'https://visitassign.vercel.app';
 
 const normalizeOrigin = (origin) => origin.trim().replace(/\/$/, '');
 
