@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-// In development, Vite proxies /api to the local Express server. Deployments
-// can point at a separate API by setting VITE_API_URL.
-const baseURL = import.meta.env.VITE_API_URL || '/api';
+// Keep browser requests same-origin. Vite proxies this path locally and
+// vercel.json proxies it to the separately deployed API in production.
+const baseURL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
 const axiosClient = axios.create({
   baseURL,
