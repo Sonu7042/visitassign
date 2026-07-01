@@ -9,23 +9,23 @@ mongoose.connection.on('error', (err) => {
   logger.error(`MongoDB connection error: ${err.message}`);
 });
 
-// Non-fatal by design: if MONGODB_URI is missing/unreachable the API still
-// boots (useful for builds/health checks), but DB-backed routes will fail
-// until a valid connection string is provided.
 const connectDB = async () => {
   const uri = process.env.MONGODB_URI;
 
   if (!uri) {
-    logger.warn('MONGODB_URI not set - skipping database connection.');
-    return;
+    throw new Error('MONGODB_URI is required');
   }
 
-  try {
-    await mongoose.connect(uri);
-    logger.info(`MongoDB connected: ${mongoose.connection.host}/${mongoose.connection.name}`);
-  } catch (err) {
-    logger.error(`Failed to connect to MongoDB: ${err.message}`);
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
   }
+
+  await mongoose.connect(uri, {
+    serverSelectionTimeoutMS: 10000,
+    maxPoolSize: 10,
+  });
+  logger.info(`MongoDB connected: ${mongoose.connection.host}/${mongoose.connection.name}`);
+  return mongoose.connection;
 };
 
 module.exports = connectDB;

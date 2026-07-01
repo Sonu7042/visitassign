@@ -30,7 +30,11 @@ app.get('/', (req, res) => {
 });
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.set('Cache-Control', 'no-store').json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: Math.round(process.uptime()),
+  });
 });
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

@@ -1,38 +1,31 @@
-const path = require('path');
-const fs = require('fs');
 const winston = require('winston');
 
-const logsDir = path.join(__dirname, '..', '..', 'logs');
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true });
-}
-
-const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.File({ filename: path.join(logsDir, 'error.log'), level: 'error' }),
-    new winston.transports.File({ filename: path.join(logsDir, 'combined.log') }),
-  ],
-});
-
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(
-    new winston.transports.Console({
-      format: winston.format.combine(
+const logFormat =
+  process.env.NODE_ENV === 'production'
+    ? winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.errors({ stack: true }),
+        winston.format.json()
+      )
+    : winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.errors({ stack: true }),
         winston.format.colorize(),
         winston.format.printf(({ level, message, timestamp, ...meta }) => {
           const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
           return `${timestamp} [${level}]: ${message}${metaStr}`;
         })
-      ),
-    })
-  );
-}
+      );
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: logFormat,
+  transports: [
+    // Serverless filesystems are ephemeral/read-only. Structured stdout logs
+    // are collected and retained by Vercel without any filesystem writes.
+    new winston.transports.Console(),
+  ],
+});
 
 // Allows morgan to pipe HTTP access logs through winston
 logger.stream = {
